@@ -487,7 +487,7 @@ function CartScreen({ cart, updateQty, removeItem, go, back }) {
   const total = subtotal + delivery;
 
   return (
-    <div style={{ paddingBottom: cart.length ? 110 : 20 }}>
+    <div style={{ paddingBottom: cart.length ? 150 : 20 }}>
       <ScreenHeader title="Your Cart" onBack={back} />
       {cart.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 30px", color: C.barkSoft }}>
@@ -527,8 +527,8 @@ function CartScreen({ cart, updateQty, removeItem, go, back }) {
         </div>
       )}
       {cart.length > 0 && (
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: 430, margin: "0 auto", background: "#fff", borderTop: `1px solid ${C.line}`, padding: 14 }}>
-          <button onClick={() => go("checkout")} style={{
+        <div style={{ position: "fixed", bottom: 64, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, boxSizing: "border-box", background: "#fff", borderTop: `1px solid ${C.line}`, padding: 14, boxShadow: "0 -2px 10px rgba(0,0,0,0.06)", zIndex: 15 }}>
+          <button type="button" onClick={() => go("checkout")} style={{
             width: "100%", background: C.pine, color: "#fff", border: "none", borderRadius: 14, padding: "14px 0",
             fontWeight: 600, fontSize: 14.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
@@ -897,7 +897,7 @@ export default function App() {
         {view === "orders" && <OrdersScreen back={back} orders={orders} go={go} />}
 
         {showNav && (
-          <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "#fff", borderTop: `1px solid ${C.line}`, display: "flex", justifyContent: "space-around", padding: "8px 0 10px" }}>
+          <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, height: 64, boxSizing: "border-box", background: "#fff", borderTop: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "space-around", zIndex: 20 }}>
             <NavItem id="home" icon={Home} label="Home" />
             <NavItem id="shop" icon={Search} label="Shop" />
             <NavItem id="cart" icon={ShoppingCart} label="Cart" />
