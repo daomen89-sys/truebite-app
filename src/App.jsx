@@ -616,8 +616,23 @@ function PaymentScreen({ back, go, total, placeOrder }) {
     setProcessing(true);
     setTimeout(() => {
       setProcessing(false);
-      placeOrder(method);
-      go("success");
+      // Randomized outcome — simulates a real gateway's success/decline split.
+      // ~70% success, ~30% decline, purely for demoing both flows.
+      const succeeded = Math.random() < 0.7;
+      if (succeeded) {
+        placeOrder(method);
+        go("success");
+      } else {
+        const reasons = [
+          "Your bank declined this transaction.",
+          "Payment timed out — the gateway didn't respond in time.",
+          "Insufficient balance for this transaction.",
+          "Transaction cancelled — OTP verification failed.",
+          "Your card issuer flagged this as a risky transaction.",
+        ];
+        const reason = reasons[Math.floor(Math.random() * reasons.length)];
+        go("payment_failed", { failedMethod: method, failReason: reason });
+      }
     }, 1500);
   };
 
@@ -664,7 +679,7 @@ function PaymentScreen({ back, go, total, placeOrder }) {
       </div>
 
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: 430, margin: "0 auto", background: "#fff", borderTop: `1px solid ${C.line}`, padding: 14 }}>
-        <button disabled={!method || processing} onClick={handleProceed} style={{
+        <button type="button" disabled={!method || processing} onClick={handleProceed} style={{
           width: "100%", background: (method && !processing) ? C.pine : C.line, color: (method && !processing) ? "#fff" : C.barkSoft,
           border: "none", borderRadius: 14, padding: "14px 0", fontWeight: 600, fontSize: 14.5,
           cursor: (method && !processing) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -686,20 +701,59 @@ function PaymentScreen({ back, go, total, placeOrder }) {
   );
 }
 
+/* ---------------------------------------------------------------
+   PAYMENT FAILED — randomized decline outcome. Offers Retry
+   (back to method selection) or falling back to Cash on Delivery.
+---------------------------------------------------------------- */
+function PaymentFailedScreen({ go, back, total, failedMethod, failReason, placeOrder }) {
+  const methodLabel = PAYMENT_METHODS.find((m) => m.id === failedMethod)?.label || "your payment method";
+  return (
+    <div style={{ padding: "60px 24px", textAlign: "center" }}>
+      <div style={{ width: 68, height: 68, borderRadius: "50%", background: "#FCE9E7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
+        <X size={32} color="#C0392B" strokeWidth={2.5} />
+      </div>
+      <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 21, color: C.bark, marginBottom: 6 }}>Payment failed</div>
+      <div style={{ fontSize: 13.5, color: C.barkSoft, marginBottom: 4 }}>{failReason}</div>
+      <div style={{ fontSize: 12, color: C.barkSoft, marginBottom: 22 }}>Attempted via {methodLabel} · {inr(total)}</div>
+
+      <button type="button" onClick={() => go("payment")} style={{
+        width: "100%", background: C.pine, color: "#fff", border: "none", borderRadius: 14, padding: "14px 0",
+        fontWeight: 600, fontSize: 14.5, cursor: "pointer", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+      }}>
+        Retry payment
+      </button>
+      <button type="button" onClick={() => { placeOrder("cod"); go("success"); }} style={{
+        width: "100%", background: "none", color: C.pine, border: `1.5px solid ${C.line}`, borderRadius: 14, padding: "14px 0",
+        fontWeight: 600, fontSize: 14.5, cursor: "pointer", marginBottom: 10,
+      }}>
+        Pay via Cash on Delivery instead
+      </button>
+      <button type="button" onClick={back} style={{
+        width: "100%", background: "none", color: C.barkSoft, border: "none", padding: "6px 0", fontSize: 13, cursor: "pointer",
+      }}>
+        Go back
+      </button>
+    </div>
+  );
+}
+
 function SuccessScreen({ go, lastOrder }) {
   if (!lastOrder) return null;
+  const isCod = lastOrder.methodLabel === "Cash on Delivery";
   return (
     <div style={{ padding: "60px 24px", textAlign: "center" }}>
       <div style={{ width: 68, height: 68, borderRadius: "50%", background: "#E7F5EC", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
         <Check size={32} color="#2E8B57" strokeWidth={2.5} />
       </div>
       <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 21, color: C.bark, marginBottom: 6 }}>Order placed!</div>
-      <div style={{ fontSize: 13.5, color: C.barkSoft, marginBottom: 22 }}>Your pets' order is confirmed and on its way.</div>
+      <div style={{ fontSize: 13.5, color: C.barkSoft, marginBottom: 22 }}>
+        {isCod ? "Your order is confirmed — pay in cash when it arrives." : "Your pets' order is confirmed and on its way."}
+      </div>
       <BowlCard style={{ padding: 16, textAlign: "left", marginBottom: 20 }}>
         <Row label="Order ID" value={lastOrder.id} bold />
-        <Row label="Payment ref" value={lastOrder.refId} />
+        {!isCod && <Row label="Payment ref" value={lastOrder.refId} />}
         <Row label="Paid via" value={lastOrder.methodLabel} />
-        <Row label="Amount" value={inr(lastOrder.total)} />
+        <Row label={isCod ? "Amount due" : "Amount paid"} value={inr(lastOrder.total)} />
         <Row label="Est. delivery" value={lastOrder.eta} />
       </BowlCard>
       <button onClick={() => go("orders")} style={{ width: "100%", background: C.pine, color: "#fff", border: "none", borderRadius: 14, padding: "14px 0", fontWeight: 600, fontSize: 14.5, cursor: "pointer", marginBottom: 10 }}>
@@ -790,11 +844,11 @@ export default function App() {
   const total = subtotal + delivery;
 
   const placeOrder = (method) => {
-    const labels = { upi: "UPI", credit: "Credit Card", debit: "Debit Card", wallet: "Wallet" };
+    const labels = { upi: "UPI", credit: "Credit Card", debit: "Debit Card", wallet: "Wallet", cod: "Cash on Delivery" };
     const etaOptions = ["Arriving in 2–3 days", "Arriving in 3–4 days", "Arriving tomorrow"];
     const order = {
       id: "TB" + Math.floor(100000 + Math.random() * 900000),
-      refId: "PAY" + Math.random().toString(36).slice(2, 11).toUpperCase(),
+      refId: method === "cod" ? null : "PAY" + Math.random().toString(36).slice(2, 11).toUpperCase(),
       items: cart,
       total,
       methodLabel: labels[method],
@@ -838,6 +892,7 @@ export default function App() {
         {view === "cart" && <CartScreen cart={cart} updateQty={updateQty} removeItem={removeItem} go={go} back={back} />}
         {view === "checkout" && <CheckoutScreen back={back} go={go} cart={cart} address={address} setAddress={setAddress} />}
         {view === "payment" && <PaymentScreen back={back} go={go} total={total} placeOrder={placeOrder} />}
+        {view === "payment_failed" && <PaymentFailedScreen go={go} back={back} total={total} failedMethod={params.failedMethod} failReason={params.failReason} placeOrder={placeOrder} />}
         {view === "success" && <SuccessScreen go={go} lastOrder={lastOrder} />}
         {view === "orders" && <OrdersScreen back={back} orders={orders} go={go} />}
 
